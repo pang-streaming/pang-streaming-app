@@ -55,7 +55,7 @@ export class SocketServer {
         this.handleStartStream(socket, config);
       });
 
-      socket.on('video-chunk-webm', (data: Buffer | ArrayBuffer) => {
+      socket.on('video-chunk-webm', (data: { buffer: Buffer | ArrayBuffer; timestamp: number } | Buffer | ArrayBuffer) => {
         this.handleVideoChunk(socket, data);
       });
 
@@ -103,9 +103,11 @@ export class SocketServer {
     }
   }
 
-  private handleVideoChunk(socket: Socket, data: Buffer | ArrayBuffer): void {
+  private handleVideoChunk(socket: Socket, data: { buffer: Buffer | ArrayBuffer; timestamp: number } | Buffer | ArrayBuffer): void {
     try {
-      this.streamManager.writeChunk(socket.id, data);
+      // 객체 형태로 온 경우 buffer 추출
+      const buffer = (data as any).buffer !== undefined ? (data as any).buffer : data;
+      this.streamManager.writeChunk(socket.id, buffer);
     } catch (error) {
       if (error instanceof Error && error.message !== 'EPIPE') {
         console.error(`[${socket.id}] Chunk write error:`, error.message);

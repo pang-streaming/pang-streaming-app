@@ -88,7 +88,9 @@ class SocketServer {
     }
     handleVideoChunk(socket, data) {
         try {
-            this.streamManager.writeChunk(socket.id, data);
+            // 객체 형태로 온 경우 buffer 추출
+            const buffer = data.buffer !== undefined ? data.buffer : data;
+            this.streamManager.writeChunk(socket.id, buffer);
         }
         catch (error) {
             if (error instanceof Error && error.message !== 'EPIPE') {

@@ -1,7 +1,8 @@
 {
   "name": "pang-streaming-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "Pang Streaming Application - WebM to RTMP Streamer",
+  "author": "Your Name <your.email@example.com>",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -38,6 +39,7 @@
     "files": [
       "dist/**/*",
       "node_modules/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "asarUnpack": [
@@ -45,14 +47,17 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
-      "target": ["dmg", "zip"]
+      "target": ["dmg", "zip"],
+      "icon": "assets/icon.icns"
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": ["nsis", "portable"],
+      "icon": "assets/icon.ico"
     },
     "linux": {
       "target": ["AppImage", "deb"],
-      "category": "Utility"
+      "category": "Utility",
+      "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
