@@ -48,6 +48,55 @@ const path = __importStar(require("path"));
 const socket_server_1 = require("./socket-server");
 let tray = null;
 let socketServer = null;
+// Deep link protocol handler
+if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+        electron_1.app.setAsDefaultProtocolClient('pang-streamer', process.execPath, [path.resolve(process.argv[1])]);
+    }
+}
+else {
+    electron_1.app.setAsDefaultProtocolClient('pang-streamer');
+}
+// Single instance lock
+const gotTheLock = electron_1.app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    electron_1.app.quit();
+}
+else {
+    electron_1.app.on('second-instance', (event, commandLine) => {
+        // 다른 인스턴스에서 실행 시도 시 처리
+        const url = commandLine.find(arg => arg.startsWith('pang-streamer://'));
+        if (url) {
+            console.log('Deep link received (second-instance):', url);
+            handleDeepLink(url);
+        }
+    });
+}
+// macOS/Windows deep link handler
+electron_1.app.on('open-url', (event, url) => {
+    event.preventDefault();
+    console.log('Deep link received (open-url):', url);
+    handleDeepLink(url);
+});
+function handleDeepLink(url) {
+    console.log('Handling deep link:', url);
+    // pang-streamer://start - 앱 실행 (이미 실행 중)
+    if (url.includes('start')) {
+        console.log('App is already running');
+    }
+    // pang-streamer://quit - 앱 종료
+    if (url.includes('quit')) {
+        console.log('Quitting app via deep link');
+        if (socketServer) {
+            socketServer.stop().then(() => {
+                electron_1.app.quit();
+            });
+        }
+        else {
+            electron_1.app.quit();
+        }
+    }
+}
 electron_1.app.whenReady().then(() => __awaiter(void 0, void 0, void 0, function* () {
     // Socket.IO 서버 시작
     socketServer = new socket_server_1.SocketServer(47284);
@@ -102,6 +151,14 @@ electron_1.app.whenReady().then(() => __awaiter(void 0, void 0, void 0, function
     };
     updateMenu();
     tray.setToolTip('Pang Streaming App');
+    // Check for deep link on startup
+    if (process.platform !== 'darwin') {
+        const url = process.argv.find(arg => arg.startsWith('pang-streamer://'));
+        if (url) {
+            console.log('Deep link received (startup):', url);
+            handleDeepLink(url);
+        }
+    }
 }));
 // 모든 윈도우가 닫혀도 앱이 종료되지 않도록 설정
 electron_1.app.on('window-all-closed', () => {

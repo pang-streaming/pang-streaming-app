@@ -2,12 +2,12 @@
 
 ## 빠른 시작
 
-### macOS DMG 생성 (Mac에서)
+### macOS PKG 생성 (Mac에서)
 ```bash
 npm run dist:mac
 ```
 
-생성 파일: `dist/Pang Streaming App-1.0.0.dmg`
+생성 파일: `dist/Pang Streaming App-1.0.0.pkg`
 
 ### Windows EXE 생성 (Mac에서 크로스 빌드)
 ```bash
@@ -67,9 +67,7 @@ npm run dist:linux   # Linux
 ## 생성되는 파일
 
 ### macOS
-- `Pang Streaming App-1.0.0.dmg` - 설치 이미지
-- `Pang Streaming App-1.0.0-mac.zip` - 압축 파일
-- `Pang Streaming App-1.0.0-arm64-mac.zip` (Apple Silicon)
+- `Pang Streaming App-1.0.0.pkg` - macOS 설치 패키지
 
 ### Windows
 - `Pang Streaming App Setup 1.0.0.exe` - NSIS 설치파일
@@ -107,9 +105,10 @@ FFmpeg 경로: /path/to/ffmpeg
 ## 배포
 
 ### macOS
-1. DMG 파일 배포
-2. 사용자: Gatekeeper 우회 (개발 빌드)
-   - 우클릭 → 열기
+1. PKG 파일 배포
+2. 사용자: 더블클릭으로 설치
+3. Gatekeeper 우회 (개발 빌드)
+   - 시스템 환경설정 → 보안 및 개인 정보 보호 → "확인 없이 열기"
 
 ### Windows  
 1. EXE 파일 배포

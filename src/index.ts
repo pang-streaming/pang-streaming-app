@@ -5,6 +5,59 @@ import { SocketServer } from './socket-server';
 let tray: Tray | null = null;
 let socketServer: SocketServer | null = null;
 
+// Deep link protocol handler
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('pang-streamer', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('pang-streamer');
+}
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine) => {
+    // 다른 인스턴스에서 실행 시도 시 처리
+    const url = commandLine.find(arg => arg.startsWith('pang-streamer://'));
+    if (url) {
+      console.log('Deep link received (second-instance):', url);
+      handleDeepLink(url);
+    }
+  });
+}
+
+// macOS/Windows deep link handler
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  console.log('Deep link received (open-url):', url);
+  handleDeepLink(url);
+});
+
+function handleDeepLink(url: string) {
+  console.log('Handling deep link:', url);
+  
+  // pang-streamer://start - 앱 실행 (이미 실행 중)
+  if (url.includes('start')) {
+    console.log('App is already running');
+  }
+  
+  // pang-streamer://quit - 앱 종료
+  if (url.includes('quit')) {
+    console.log('Quitting app via deep link');
+    if (socketServer) {
+      socketServer.stop().then(() => {
+        app.quit();
+      });
+    } else {
+      app.quit();
+    }
+  }
+}
+
 app.whenReady().then(async () => {
   // Socket.IO 서버 시작
   socketServer = new SocketServer(47284);
@@ -61,6 +114,15 @@ app.whenReady().then(async () => {
 
   updateMenu();
   tray.setToolTip('Pang Streaming App');
+
+  // Check for deep link on startup
+  if (process.platform !== 'darwin') {
+    const url = process.argv.find(arg => arg.startsWith('pang-streamer://'));
+    if (url) {
+      console.log('Deep link received (startup):', url);
+      handleDeepLink(url);
+    }
+  }
 });
 
 // 모든 윈도우가 닫혀도 앱이 종료되지 않도록 설정
