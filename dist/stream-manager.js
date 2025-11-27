@@ -13,6 +13,7 @@ class StreamManager {
         }
         const ffmpegPath = (0, ffmpeg_helper_1.getFFmpegPath)();
         const ffmpegArgs = this.buildFFmpegArgs(rtmpUrls);
+        console.log(`[${socketId}] FFmpeg command: ${ffmpegPath} ${ffmpegArgs.join(' ')}`);
         const ffmpeg = (0, child_process_1.spawn)(ffmpegPath, ffmpegArgs, {
             stdio: ['pipe', 'pipe', 'pipe']
         });
@@ -24,6 +25,31 @@ class StreamManager {
         });
         callbacks.onReady();
     }
+    parseRtmpUrl(url) {
+        console.log(`[RTMP] Parsing URL: ${url}`);
+        // Check for rtmp://host:port/app/key (2 path segments)
+        const withAppMatch = url.match(/^(rtmp:\/\/[^\/]+:\d+)\/([^\/]+)\/(.+)$/);
+        if (withAppMatch) {
+            console.log(`[RTMP] Format: host:port/app/key`);
+            return {
+                baseUrl: `${withAppMatch[1]}/${withAppMatch[2]}`,
+                streamKey: withAppMatch[3],
+                hasApp: true
+            };
+        }
+        // Check for rtmp://host:port/key (1 path segment)
+        const withoutAppMatch = url.match(/^(rtmp:\/\/[^\/]+:\d+)\/(.+)$/);
+        if (withoutAppMatch) {
+            console.log(`[RTMP] Format: host:port/key -> using rtmp_playpath`);
+            return {
+                baseUrl: withoutAppMatch[1],
+                streamKey: withoutAppMatch[2],
+                hasApp: false
+            };
+        }
+        console.log(`[RTMP] Unknown format, using as-is`);
+        return { baseUrl: url, streamKey: '', hasApp: false };
+    }
     buildFFmpegArgs(rtmpUrls) {
         const args = [
             '-fflags', '+genpts',
@@ -31,14 +57,27 @@ class StreamManager {
             '-c:v', 'copy',
             '-c:a', 'aac',
             '-b:a', '128k',
-            '-ar', '44100'
+            '-ar', '44100',
+            '-map', '0:v',
+            '-map', '0:a'
         ];
         if (rtmpUrls.length === 1) {
-            args.push('-f', 'flv', rtmpUrls[0]);
+            const { baseUrl, streamKey, hasApp } = this.parseRtmpUrl(rtmpUrls[0]);
+            args.push('-f', 'flv');
+            if (!hasApp && streamKey) {
+                // Use rtmp_playpath to explicitly set stream key
+                console.log(`[RTMP] Using playpath: ${streamKey} on ${baseUrl}`);
+                args.push('-rtmp_playpath', streamKey);
+                args.push(baseUrl);
+            }
+            else {
+                console.log(`[RTMP] Using full URL: ${rtmpUrls[0]}`);
+                args.push(rtmpUrls[0]);
+            }
         }
         else {
             const teeOutputs = rtmpUrls.map(url => `[f=flv]${url}`).join('|');
-            args.push('-f', 'tee', '-map', '0:v', '-map', '0:a', teeOutputs);
+            args.push('-f', 'tee', teeOutputs);
         }
         return args;
     }
