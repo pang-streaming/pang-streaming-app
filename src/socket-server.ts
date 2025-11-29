@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
-import { createServer, Server as HttpServer } from 'http';
+import { createServer as createHttpsServer, Server as HttpsServer } from 'https';
 import { StreamManager } from './stream-manager';
+import { getOrCreateCertificate } from './cert-manager';
 
 interface StreamConfig {
   rtmpUrl: string | string[];
@@ -8,7 +9,7 @@ interface StreamConfig {
 
 export class SocketServer {
   private io: Server | null = null;
-  private httpServer: HttpServer | null = null;
+  private httpsServer: HttpsServer | null = null;
   private port: number;
   private streamManager: StreamManager;
 
@@ -20,8 +21,10 @@ export class SocketServer {
   start(): Promise<number> {
     return new Promise((resolve, reject) => {
       try {
-        this.httpServer = createServer();
-        this.io = new Server(this.httpServer, {
+        const { key, cert } = getOrCreateCertificate();
+
+        this.httpsServer = createHttpsServer({ key, cert });
+        this.io = new Server(this.httpsServer, {
           cors: {
             origin: '*',
             methods: ['GET', 'POST']
@@ -31,12 +34,12 @@ export class SocketServer {
 
         this.setupEventHandlers();
 
-        this.httpServer.listen(this.port, () => {
-          console.log(`Socket.IO 서버 시작됨: http://localhost:${this.port}`);
+        this.httpsServer.listen(this.port, () => {
+          console.log(`Socket.IO 서버 시작됨 (WSS): https://localhost:${this.port}`);
           resolve(this.port);
         });
 
-        this.httpServer.on('error', (error: Error) => {
+        this.httpsServer.on('error', (error: Error) => {
           reject(error);
         });
       } catch (error) {
@@ -132,8 +135,8 @@ export class SocketServer {
       if (this.io) {
         this.io.close(() => {
           console.log('Socket.IO 서버 종료됨');
-          if (this.httpServer) {
-            this.httpServer.close(() => {
+          if (this.httpsServer) {
+            this.httpsServer.close(() => {
               resolve();
             });
           } else {
